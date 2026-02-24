@@ -14,6 +14,10 @@ static int string_ensure_capacity(string_t* s, size_t needed) {
 
     size_t new_capacity = s->capacity > 0 ? s->capacity : STRING_DEFAULT_CAPACITY;
     while (new_capacity < needed) {
+        // 溢出检查：确保乘以增长因子不会导致溢出
+        if (new_capacity > SIZE_MAX / STRING_GROWTH_FACTOR) {
+            return -1;
+        }
         new_capacity *= STRING_GROWTH_FACTOR;
     }
 
@@ -61,6 +65,11 @@ string_t* string_create_from_len(const char* str, size_t len) {
         return string_create();
     }
 
+    // 溢出检查：确保 len + 1 不会溢出
+    if (len > SIZE_MAX - 1) {
+        return NULL;
+    }
+
     string_t* s = string_create_capacity(len + 1);
     if (s == NULL) {
         return NULL;
@@ -88,7 +97,14 @@ int string_append(string_t* s, const char* str) {
 }
 
 int string_append_len(string_t* s, const char* str, size_t len) {
-    if (s == NULL || str == NULL || len == 0) {
+    if (s == NULL || str == NULL) {
+        return -1;
+    }
+    if (len == 0) {
+        return 0;  // 空字符串追加成功
+    }
+    // 添加溢出检查
+    if (len > SIZE_MAX - s->len - 1) {
         return -1;
     }
 
@@ -117,6 +133,12 @@ int string_printf(string_t* s, const char* fmt, ...) {
     va_end(args_copy);
 
     if (needed < 0) {
+        va_end(args);
+        return -1;
+    }
+
+    // 溢出检查：确保 needed + 1 不会溢出
+    if (needed > (int)(SIZE_MAX - 1)) {
         va_end(args);
         return -1;
     }
