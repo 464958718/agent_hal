@@ -1,83 +1,50 @@
 #ifndef DEVICE_STATE_MACHINE_H
 #define DEVICE_STATE_MACHINE_H
 
-#include <atomic>
-#include <functional>
-#include <mutex>
-#include <vector>
+#include <stdint.h>
+#include <stdbool.h>
 
-#include "device_state.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/**
- * DeviceStateMachine - Manages device state transitions with validation
- * 
- * This class ensures strict state transition rules and provides a callback mechanism
- * for components to react to state changes.
- */
-class DeviceStateMachine {
-public:
-    DeviceStateMachine();
-    ~DeviceStateMachine() = default;
+// 设备状态枚举
+typedef enum {
+    DEVICE_STATE_STARTING = 0,
+    DEVICE_STATE_WIFI_CONFIGURING,
+    DEVICE_STATE_IDLE,
+    DEVICE_STATE_LISTENING,
+    DEVICE_STATE_SPEAKING,
+    DEVICE_STATE_ERROR,
+    DEVICE_STATE_MAX
+} device_state_t;
 
-    // Delete copy constructor and assignment operator
-    DeviceStateMachine(const DeviceStateMachine&) = delete;
-    DeviceStateMachine& operator=(const DeviceStateMachine&) = delete;
+// 状态变更回调
+typedef void (*state_change_callback_t)(device_state_t old_state,
+    device_state_t new_state, void* user_data);
 
-    /**
-     * Get the current device state
-     */
-    DeviceState GetState() const { return current_state_.load(); }
+// 状态机结构
+typedef struct device_state_machine device_state_machine_t;
 
-    /**
-     * Attempt to transition to a new state
-     * @param new_state The target state
-     * @return true if transition was successful, false if invalid transition
-     */
-    bool TransitionTo(DeviceState new_state);
+// 状态机 API
+device_state_machine_t* device_state_machine_create(void);
+void device_state_machine_destroy(device_state_machine_t* sm);
 
-    /**
-     * Check if transition to target state is valid from current state
-     */
-    bool CanTransitionTo(DeviceState target) const;
+// 状态转换
+int device_state_machine_transition(device_state_machine_t* sm,
+    device_state_t new_state);
+device_state_t device_state_machine_get_state(const device_state_machine_t* sm);
 
-    /**
-     * State change callback type
-     * Parameters: old_state, new_state
-     */
-    using StateCallback = std::function<void(DeviceState, DeviceState)>;
+// 状态监听
+int device_state_machine_add_listener(device_state_machine_t* sm,
+    state_change_callback_t callback, void* user_data);
 
-    /**
-     * Add a state change listener (observer pattern)
-     * Callback is invoked in the context of the caller of TransitionTo()
-     * @return listener id for removal
-     */
-    int AddStateChangeListener(StateCallback callback);
+// 便捷函数
+bool device_state_machine_is_idle(const device_state_machine_t* sm);
+bool device_state_machine_is_active(const device_state_machine_t* sm);
 
-    /**
-     * Remove a state change listener by id
-     */
-    void RemoveStateChangeListener(int listener_id);
-
-    /**
-     * Get state name string for logging
-     */
-    static const char* GetStateName(DeviceState state);
-
-private:
-    std::atomic<DeviceState> current_state_{kDeviceStateUnknown};
-    std::vector<std::pair<int, StateCallback>> listeners_;
-    int next_listener_id_{0};
-    std::mutex mutex_;
-
-    /**
-     * Check if transition from source to target is valid
-     */
-    bool IsValidTransition(DeviceState from, DeviceState to) const;
-
-    /**
-     * Notify callback of state change
-     */
-    void NotifyStateChange(DeviceState old_state, DeviceState new_state);
-};
+#ifdef __cplusplus
+}
+#endif
 
 #endif // DEVICE_STATE_MACHINE_H
