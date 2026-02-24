@@ -1,61 +1,144 @@
-#ifndef _AUDIO_CODEC_H
-#define _AUDIO_CODEC_H
+/**
+ * @file audio_codec.h
+ * @brief Audio codec interface header file
+ */
+#ifndef AUDIO_CODEC_H
+#define AUDIO_CODEC_H
 
-#include <freertos/FreeRTOS.h>
-#include <freertos/event_groups.h>
-#include <driver/i2s_std.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 
-#include <vector>
-#include <string>
-#include <functional>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include "board.h"
+/**
+ * @brief Codec type enumeration
+ */
+typedef enum {
+    CODEC_TYPE_NONE,
+    CODEC_TYPE_ES8311,
+    CODEC_TYPE_ES8388,
+    CODEC_TYPE_ES8374,
+    CODEC_TYPE_ES8389,
+    CODEC_TYPE_MAX
+} codec_type_t;
 
-#define AUDIO_CODEC_DMA_DESC_NUM 6
-#define AUDIO_CODEC_DMA_FRAME_NUM 240
+/**
+ * @brief Audio format structure
+ */
+typedef struct {
+    int sample_rate;
+    int bits_per_sample;
+    int channels;
+} audio_format_t;
 
-class AudioCodec {
-public:
-    AudioCodec();
-    virtual ~AudioCodec();
-    
-    virtual void SetOutputVolume(int volume);
-    virtual void SetInputGain(float gain);
-    virtual void EnableInput(bool enable);
-    virtual void EnableOutput(bool enable);
+/**
+ * @brief Audio codec opaque structure
+ */
+typedef struct audio_codec audio_codec_t;
 
-    virtual void OutputData(std::vector<int16_t>& data);
-    virtual bool InputData(std::vector<int16_t>& data);
-    virtual void Start();
+/**
+ * @brief Codec operations structure
+ */
+typedef struct {
+    int (*init)(audio_codec_t* codec, const audio_format_t* fmt);
+    int (*deinit)(audio_codec_t* codec);
+    int (*set_volume)(audio_codec_t* codec, int volume);
+    int (*get_volume)(audio_codec_t* codec, int* volume);
+    int (*start_record)(audio_codec_t* codec);
+    int (*stop_record)(audio_codec_t* codec);
+    int (*start_playback)(audio_codec_t* codec);
+    int (*stop_playback)(audio_codec_t* codec);
+} codec_ops_t;
 
-    inline bool duplex() const { return duplex_; }
-    inline bool input_reference() const { return input_reference_; }
-    inline int input_sample_rate() const { return input_sample_rate_; }
-    inline int output_sample_rate() const { return output_sample_rate_; }
-    inline int input_channels() const { return input_channels_; }
-    inline int output_channels() const { return output_channels_; }
-    inline int output_volume() const { return output_volume_; }
-    inline float input_gain() const { return input_gain_; }
-    inline bool input_enabled() const { return input_enabled_; }
-    inline bool output_enabled() const { return output_enabled_; }
-
-protected:
-    i2s_chan_handle_t tx_handle_ = nullptr;
-    i2s_chan_handle_t rx_handle_ = nullptr;
-
-    bool duplex_ = false;
-    bool input_reference_ = false;
-    bool input_enabled_ = false;
-    bool output_enabled_ = false;
-    int input_sample_rate_ = 0;
-    int output_sample_rate_ = 0;
-    int input_channels_ = 1;
-    int output_channels_ = 1;
-    int output_volume_ = 70;
-    float input_gain_ = 0.0;
-
-    virtual int Read(int16_t* dest, int samples) = 0;
-    virtual int Write(const int16_t* data, int samples) = 0;
+/**
+ * @brief Audio codec structure
+ */
+struct audio_codec {
+    const codec_ops_t* ops;
+    void* impl;
+    codec_type_t type;
+    audio_format_t format;
+    int volume;
+    bool initialized;
 };
 
-#endif // _AUDIO_CODEC_H
+/**
+ * @brief Create an audio codec instance
+ * @param type Codec type
+ * @return Pointer to audio codec instance, or NULL on failure
+ */
+audio_codec_t* audio_codec_create(codec_type_t type);
+
+/**
+ * @brief Destroy an audio codec instance
+ * @param codec Pointer to audio codec instance
+ */
+void audio_codec_destroy(audio_codec_t* codec);
+
+/**
+ * @brief Initialize the audio codec
+ * @param codec Pointer to audio codec instance
+ * @param fmt Pointer to audio format
+ * @return 0 on success, negative error code on failure
+ */
+int audio_codec_init(audio_codec_t* codec, const audio_format_t* fmt);
+
+/**
+ * @brief Deinitialize the audio codec
+ * @param codec Pointer to audio codec instance
+ * @return 0 on success, negative error code on failure
+ */
+int audio_codec_deinit(audio_codec_t* codec);
+
+/**
+ * @brief Set codec volume
+ * @param codec Pointer to audio codec instance
+ * @param volume Volume level (0-100)
+ * @return 0 on success, negative error code on failure
+ */
+int audio_codec_set_volume(audio_codec_t* codec, int volume);
+
+/**
+ * @brief Get codec volume
+ * @param codec Pointer to audio codec instance
+ * @param volume Pointer to store volume level
+ * @return 0 on success, negative error code on failure
+ */
+int audio_codec_get_volume(audio_codec_t* codec, int* volume);
+
+/**
+ * @brief Start audio recording
+ * @param codec Pointer to audio codec instance
+ * @return 0 on success, negative error code on failure
+ */
+int audio_codec_start_record(audio_codec_t* codec);
+
+/**
+ * @brief Stop audio recording
+ * @param codec Pointer to audio codec instance
+ * @return 0 on success, negative error code on failure
+ */
+int audio_codec_stop_record(audio_codec_t* codec);
+
+/**
+ * @brief Start audio playback
+ * @param codec Pointer to audio codec instance
+ * @return 0 on success, negative error code on failure
+ */
+int audio_codec_start_playback(audio_codec_t* codec);
+
+/**
+ * @brief Stop audio playback
+ * @param codec Pointer to audio codec instance
+ * @return 0 on success, negative error code on failure
+ */
+int audio_codec_stop_playback(audio_codec_t* codec);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // AUDIO_CODEC_H
