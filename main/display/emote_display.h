@@ -1,42 +1,47 @@
-#pragma once
+#ifndef EMOTE_DISPLAY_H
+#define EMOTE_DISPLAY_H
 
 #include "display.h"
-#include <memory>
-#include <string>
-#include <esp_lcd_panel_io.h>
-#include <esp_lcd_panel_ops.h>
-#include "expression_emote.h"
 
-namespace emote {
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-class EmoteDisplay : public Display {
-public:
-    EmoteDisplay(esp_lcd_panel_handle_t panel, esp_lcd_panel_io_handle_t panel_io, int width, int height);
-    virtual ~EmoteDisplay();
+// 表情类型
+typedef enum {
+    EMOTE_DEFAULT = 0,
+    EMOTE_LISTENING,
+    EMOTE_SPEAKING,
+    EMOTE_HAPPY,
+    EMOTE_SAD,
+    EMOTE_ANGRY,
+    EMOTE_SURPRISED,
+    EMOTE_SLEEPING,
+    EMOTE_CONFUSED,
+    EMOTE_WINK,
+    EMOTE_LOVE,
+    EMOTE_MAX
+} emote_type_t;
 
-    virtual void SetEmotion(const char* emotion) override;
-    virtual void SetStatus(const char* status) override;
-    virtual void SetChatMessage(const char* role, const char* content) override;
-    virtual void SetTheme(Theme* theme) override;
-    virtual void ShowNotification(const char* notification, int duration_ms = 3000) override;
-    virtual void UpdateStatusBar(bool update_all = false) override;
-    virtual void SetPowerSaveMode(bool on) override;
-    virtual void SetPreviewImage(const void* image);
+// 表情配置
+typedef struct {
+    display_t* display;
+    int x;
+    int y;
+    int size;
+} emote_config_t;
 
-    bool StopAnimDialog();
-    bool InsertAnimDialog(const char* emoji_name, uint32_t duration_ms);
+// 创建表情显示实例
+display_t* emote_display_create(const emote_config_t* config);
 
-    void RefreshAll();
+// 显示指定表情
+int emote_display_show(display_t* disp, emote_type_t emote);
 
-    // Get emote handle for internal use
-    emote_handle_t GetEmoteHandle() const { return emote_handle_; }
+// 显示自定义表情
+int emote_display_show_custom(display_t* disp, const char* emoji);
 
-private:
-    virtual bool Lock(int timeout_ms = 0) override;
-    virtual void Unlock() override;
+#ifdef __cplusplus
+}
+#endif
 
-    emote_handle_t emote_handle_ = nullptr;
-
-};
-
-} // namespace emote
+#endif // EMOTE_DISPLAY_H
