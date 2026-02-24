@@ -1,34 +1,29 @@
-#ifndef _WEBSOCKET_PROTOCOL_H_
-#define _WEBSOCKET_PROTOCOL_H_
-
+#ifndef WEBSOCKET_PROTOCOL_H
+#define WEBSOCKET_PROTOCOL_H
 
 #include "protocol.h"
 
-#include <web_socket.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/event_groups.h>
-
-#define WEBSOCKET_PROTOCOL_SERVER_HELLO_EVENT (1 << 0)
-
-class WebsocketProtocol : public Protocol {
-public:
-    WebsocketProtocol();
-    ~WebsocketProtocol();
-
-    bool Start() override;
-    bool SendAudio(std::unique_ptr<AudioStreamPacket> packet) override;
-    bool OpenAudioChannel() override;
-    void CloseAudioChannel(bool send_goodbye = true) override;
-    bool IsAudioChannelOpened() const override;
-
-private:
-    EventGroupHandle_t event_group_handle_;
-    std::unique_ptr<WebSocket> websocket_;
-    int version_ = 1;
-
-    void ParseServerHello(const cJSON* root);
-    bool SendText(const std::string& text) override;
-    std::string GetHelloMessage();
-};
-
+#ifdef __cplusplus
+extern "C" {
 #endif
+
+// WebSocket 配置
+typedef struct {
+    const char* url;
+    const char* path;
+    const char* host;
+    const char* protocol;
+    uint16_t port;
+    bool use_tls;
+    const char** subprotocols;
+    size_t subprotocol_count;
+} websocket_config_t;
+
+// WebSocket 协议创建函数
+protocol_t* websocket_protocol_create(const websocket_config_t* config);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // WEBSOCKET_PROTOCOL_H
