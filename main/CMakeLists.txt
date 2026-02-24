@@ -1,4 +1,37 @@
-# Define source files
+# Option to use pure C version instead of C++ version
+option(USE_PURE_C_VERSION "Use pure C version instead of C++" OFF)
+
+# C version source files
+if(USE_PURE_C_VERSION)
+    list(APPEND C_SOURCES
+        "c_utils/string_utils.c"
+        "c_utils/memory_pool.c"
+        "c_utils/event_system.c"
+        "c_utils/log_utils.c"
+        "protocols/protocol.c"
+        "protocols/mqtt_protocol.c"
+        "protocols/websocket_protocol.c"
+        "display/display.c"
+        "display/oled_display.c"
+        "display/lcd_display.c"
+        "display/emote_display.c"
+        "audio/audio_manager.c"
+        "audio/audio_codec.c"
+        "audio/wake_word.c"
+        "led/led_control.c"
+        "device_state_machine.c"
+        "ota_update.c"
+        "application.c"
+        "main.c"
+    )
+    list(APPEND SOURCES ${C_SOURCES})
+else()
+    list(APPEND SOURCES
+        "main.cc"
+    )
+endif()
+
+# Define source files (C++ version)
 set(SOURCES "audio/audio_codec.cc"
             "audio/audio_service.cc"
             "audio/demuxer/ogg_demuxer.cc"
@@ -36,10 +69,15 @@ set(SOURCES "audio/audio_codec.cc"
             "settings.cc"
             "device_state_machine.cc"
             "assets.cc"
-            "main.cc"
             )
 
-set(INCLUDE_DIRS "." "display" "display/lvgl_display" "display/lvgl_display/jpg" "audio" "audio/demuxer" "protocols")
+# Include directories
+set(INCLUDE_DIRS "." "display" "display/lvgl_display" "display/lvgl_display/jpg" "audio" "audio/demuxer" "protocols" "c_utils" "led")
+
+# Add C version include directories
+if(USE_PURE_C_VERSION)
+    list(APPEND INCLUDE_DIRS "c_utils")
+endif()
 
 # Add board common files
 list(APPEND SOURCES
