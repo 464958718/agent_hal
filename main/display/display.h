@@ -1,87 +1,68 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
-#include "emoji_collection.h"
+#include <stdint.h>
+#include <stdbool.h>
 
-#ifndef CONFIG_USE_EMOTE_MESSAGE_STYLE
-#define HAVE_LVGL 1
-#include <lvgl.h>
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#include <esp_timer.h>
-#include <esp_log.h>
-#include <esp_pm.h>
+typedef struct display display_t;
 
-#include <string>
-#include <chrono>
+// 显示操作接口
+typedef struct display_ops {
+    int (*init)(display_t* disp);
+    void (*deinit)(display_t* disp);
+    int (*clear)(display_t* disp);
+    int (*draw_string)(display_t* disp, int x, int y, const char* str);
+    int (*draw_pixel)(display_t* disp, int x, int y, uint32_t color);
+    int (*draw_rect)(display_t* disp, int x, int y, int w, int h, uint32_t color);
+    int (*draw_circle)(display_t* disp, int x, int y, int radius, uint32_t color);
+    int (*draw_image)(display_t* disp, int x, int y, const void* img_data, int w, int h);
+    int (*set_brightness)(display_t* disp, int brightness);
+    int (*flush)(display_t* disp);
+} display_ops_t;
 
-class Theme {
-public:
-    Theme(const std::string& name) : name_(name) {}
-    virtual ~Theme() = default;
-
-    inline std::string name() const { return name_; }
-private:
-    std::string name_;
+struct display {
+    const display_ops_t* ops;
+    void* impl;
+    int width;
+    int height;
+    bool initialized;
 };
 
-class Display {
-public:
-    Display();
-    virtual ~Display();
+// 显示类型
+typedef enum {
+    DISPLAY_TYPE_NONE,
+    DISPLAY_TYPE_OLED,
+    DISPLAY_TYPE_LCD,
+    DISPLAY_TYPE_LVGL,
+    DISPLAY_TYPE_EMOTE
+} display_type_t;
 
-    virtual void SetStatus(const char* status);
-    virtual void ShowNotification(const char* notification, int duration_ms = 3000);
-    virtual void ShowNotification(const std::string &notification, int duration_ms = 3000);
-    virtual void SetEmotion(const char* emotion);
-    virtual void SetChatMessage(const char* role, const char* content);
-    virtual void ClearChatMessages();
-    virtual void SetTheme(Theme* theme);
-    virtual Theme* GetTheme() { return current_theme_; }
-    virtual void UpdateStatusBar(bool update_all = false);
-    virtual void SetPowerSaveMode(bool on);
-    virtual void SetupUI() { 
-        setup_ui_called_ = true;
-    }
+// 公共 API
+display_t* display_create(display_type_t type);
+void display_destroy(display_t* disp);
+int display_init(display_t* disp);
+void display_deinit(display_t* disp);
+int display_clear(display_t* disp);
+int display_draw_string(display_t* disp, int x, int y, const char* str);
+int display_draw_pixel(display_t* disp, int x, int y, uint32_t color);
+int display_draw_rect(display_t* disp, int x, int y, int w, int h, uint32_t color);
+int display_draw_circle(display_t* disp, int x, int y, int radius, uint32_t color);
+int display_draw_image(display_t* disp, int x, int y, const void* img_data, int w, int h);
+int display_set_brightness(display_t* disp, int brightness);
+int display_flush(display_t* disp);
 
-    inline int width() const { return width_; }
-    inline int height() const { return height_; }
-    inline bool IsSetupUICalled() const { return setup_ui_called_; }
+// 辅助函数
+display_type_t display_get_type(const display_t* disp);
+bool display_is_initialized(const display_t* disp);
+int display_get_width(const display_t* disp);
+int display_get_height(const display_t* disp);
 
-protected:
-    int width_ = 0;
-    int height_ = 0;
-    bool setup_ui_called_ = false;  // Track if SetupUI() has been called
-
-    Theme* current_theme_ = nullptr;
-
-    friend class DisplayLockGuard;
-    virtual bool Lock(int timeout_ms = 0) = 0;
-    virtual void Unlock() = 0;
-};
-
-
-class DisplayLockGuard {
-public:
-    DisplayLockGuard(Display *display) : display_(display) {
-        if (!display_->Lock(30000)) {
-            ESP_LOGE("Display", "Failed to lock display");
-        }
-    }
-    ~DisplayLockGuard() {
-        display_->Unlock();
-    }
-
-private:
-    Display *display_;
-};
-
-class NoDisplay : public Display {
-private:
-    virtual bool Lock(int timeout_ms = 0) override {
-        return true;
-    }
-    virtual void Unlock() override {}
-};
-
+#ifdef __cplusplus
+}
 #endif
+
+#endif // DISPLAY_H
